@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import argparse
+import os
 from datetime import date
 from pathlib import Path
 
 from disclosure_impact_agent.analysis import calculate_sales_ratio, compare_sequence, reconcile_correction_body
 from disclosure_impact_agent.models import DocumentFormat, SourceKind
 from disclosure_impact_agent.parser import parse_filing, validate_evidence_integrity
+from disclosure_impact_agent.service import analyze_memo
 
 
 def inspect_pair(original_path: Path, correction_path: Path) -> dict:
@@ -42,11 +44,36 @@ def inspect_pair(original_path: Path, correction_path: Path) -> dict:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Offline stage-1 filing inspection")
+    parser = argparse.ArgumentParser(description="Offline filing and memo impact inspection")
     parser.add_argument("original", type=Path)
     parser.add_argument("correction", type=Path)
+    parser.add_argument("--memo", type=Path, help="Analyze memo impacts (stage 2)")
+    parser.add_argument("--scenario-id", default="synthetic-a-company-contract-v1")
+    parser.add_argument("--llm-mode", choices=["fake", "openai"], default=os.getenv("LLM_MODE", "fake"))
+    parser.add_argument("--model", default=os.getenv("OPENAI_MODEL"), help="Required only for --llm-mode=openai")
     args = parser.parse_args()
-    print_json(inspect_pair(args.original, args.correction))
+    if not args.memo:
+        print_json(inspect_pair(args.original, args.correction))
+        return
+    original = parse_filing(
+        args.original.read_bytes(), document_id="synthetic-original", original_filename=args.original.name,
+        document_format=DocumentFormat.HTML, source_kind=SourceKind.SYNTHETIC,
+        source_verified=True, synthetic=True, submitted_on=date(2026, 1, 1),
+    )
+    correction = parse_filing(
+        args.correction.read_bytes(), document_id="synthetic-correction", original_filename=args.correction.name,
+        document_format=DocumentFormat.HTML, source_kind=SourceKind.SYNTHETIC,
+        source_verified=True, synthetic=True, submitted_on=date(2026, 6, 1),
+        corrects_document_id=original.document_id,
+    )
+    result = analyze_memo(
+        args.memo.read_text(), original, correction, scenario_id=args.scenario_id,
+        llm_mode=args.llm_mode, model=args.model,
+        timeout_seconds=float(os.getenv("LLM_TIMEOUT_SECONDS", "30")),
+        max_retries=int(os.getenv("LLM_MAX_RETRIES", "2")),
+        max_memo_chars=int(os.getenv("MAX_MEMO_CHARS", "5000")),
+    )
+    print_json(result.model_dump(mode="json"))
 
 
 def print_json(value: dict) -> None:

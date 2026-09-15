@@ -15,8 +15,9 @@ class Settings(BaseModel):
     data_mode: Literal["fixture", "dart"] = "fixture"
     llm_mode: Literal["fake", "openai"] = "fake"
     openai_model: str | None = None
-    api_base_url: str = "http://127.0.0.1:8000"
     max_memo_chars: int = Field(default=5_000, ge=1, le=100_000)
+    llm_timeout_seconds: float = Field(default=30, gt=0, le=300)
+    llm_max_retries: int = Field(default=2, ge=0, le=5)
 
     @classmethod
     def from_environment(cls) -> "Settings":
@@ -24,8 +25,9 @@ class Settings(BaseModel):
             "data_mode": os.getenv("DATA_MODE", "fixture").lower(),
             "llm_mode": os.getenv("LLM_MODE", "fake").lower(),
             "openai_model": os.getenv("OPENAI_MODEL") or None,
-            "api_base_url": os.getenv("API_BASE_URL", "http://127.0.0.1:8000"),
             "max_memo_chars": os.getenv("MAX_MEMO_CHARS", "5000"),
+            "llm_timeout_seconds": os.getenv("LLM_TIMEOUT_SECONDS", "30"),
+            "llm_max_retries": os.getenv("LLM_MAX_RETRIES", "2"),
         }
         settings = cls.model_validate(values)
         if settings.llm_mode == "openai" and not settings.openai_model:
@@ -39,4 +41,3 @@ def get_settings() -> Settings:
         return Settings.from_environment()
     except ValidationError as exc:
         raise RuntimeError(f"Invalid runtime configuration: {exc}") from exc
-

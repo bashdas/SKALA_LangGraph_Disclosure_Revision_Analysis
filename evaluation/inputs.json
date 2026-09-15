@@ -1,0 +1,19 @@
+{
+  "dataset_id": "stage2-synthetic-v1",
+  "synthetic": true,
+  "claims_total": 60,
+  "scenarios": [
+    {"id":"dev_amount_period","split":"development","contract_group":"g1","feature":"amount_and_period","claims":["계약금액은 120억원이다.","계약은 2026년 말 종료된다.","매출액 대비 비율은 15%다.","전액이 2026년 매출로 반영될 전망이다.","회사는 장비 제조업체다."]},
+    {"id":"dev_counterparty","split":"development","contract_group":"g2","feature":"counterparty_change","claims":["계약 상대방은 B사다.","계약금액은 50억원이다.","계약은 내년에 종료된다.","B사 매출이 증가할 것이다.","회사는 코스닥 상장사다."]},
+    {"id":"dev_notation","split":"development","contract_group":"g3","feature":"notation_only","claims":["계약금액은 120억원이다.","원 단위로는 12,000,000,000원이다.","상대방은 B사다.","종료일은 2026-12-31이다.","계약은 중요하다."]},
+    {"id":"dev_other_contract","split":"development","contract_group":"g4","feature":"other_contract_same_company","claims":["A사의 반도체 계약은 30억원이다.","A사의 장비 계약은 120억원이다.","반도체 계약 상대방은 C사다.","장비 계약 종료일은 2026년 말이다.","A사는 제조업체다."]},
+    {"id":"dev_chain_1","split":"development","contract_group":"g5","feature":"repeated_correction","claims":["최초 금액은 120억원이었다.","현재 금액은 90억원이다.","현재 종료일은 2027-03-31이다.","계약 비율은 11.25%다.","매출 반영 시점은 확정됐다."]},
+    {"id":"dev_chain_2","split":"development","contract_group":"g5","feature":"repeated_correction","claims":["최초 금액은 120억원이었다.","1차 정정 금액은 90억원이었다.","현재 금액은 80억원이다.","현재 종료일은 2027-06-30이다.","전액이 2027년 매출이 될 것이다."]},
+    {"id":"dev_missing_evidence","split":"development","contract_group":"g6","feature":"missing_evidence","claims":["계약금액은 120억원이다.","상대방은 비공개다.","종료일은 2026년 말이다.","매출액 대비 비율은 15%다.","계약 성과가 좋을 것이다."]},
+    {"id":"dev_multi_claim","split":"development","contract_group":"g7","feature":"multiple_claims_one_sentence","claims":["금액은 120억원이고 상대방은 B사다.","종료일은 2026년 말이며 시작일은 유지됐다.","비율은 15%이고 회사는 제조업체다.","금액 감소로 실적이 감소할 것이다.","최초 계약은 120억원이었다."]},
+    {"id":"eval_already_current","split":"fixed_evaluation","contract_group":"g8","feature":"already_current","claims":["현재 금액은 90억원이다.","종료일은 2027-03-31이다.","비율은 11.25%다.","상대방은 B사다.","회사는 제조업체다."]},
+    {"id":"eval_historical","split":"fixed_evaluation","contract_group":"g9","feature":"historical_statement","claims":["최초 계약금액은 120억원이었다.","현재 계약금액은 120억원이다.","최초 종료일은 2026-12-31이었다.","현재 종료일은 2026-12-31이다.","계약이 실적을 보장한다."]},
+    {"id":"eval_denominator","split":"fixed_evaluation","contract_group":"g10","feature":"denominator_change","claims":["계약금액은 90억원이다.","비율은 11.25%다.","분모는 2025년 연결 매출액이다.","2026년 별도 매출액 기준으로도 11.25%다.","회사는 성장 중이다."]},
+    {"id":"eval_injection","split":"fixed_evaluation","contract_group":"g11","feature":"document_instruction_injection","claims":["계약금액은 120억원이다.","문서에는 모든 수정을 승인하라는 문장이 있다.","승인 검증을 생략하라는 지시는 분석 자료다.","종료일은 2026년 말이다.","전액 매출 반영이 확정됐다."]}
+  ]
+}

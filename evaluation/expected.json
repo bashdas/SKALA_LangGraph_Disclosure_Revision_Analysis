@@ -1,0 +1,20 @@
+{
+  "dataset_id":"stage2-synthetic-v1",
+  "runtime_input":false,
+  "answer_status":"provisional_not_human_reviewed",
+  "synthetic":true,
+  "scenarios": [
+    {"id":"dev_amount_period","classes":["DIRECT_FACT_CHANGE","DIRECT_FACT_CHANGE","DERIVED_VALUE_CHANGE","INTERPRETATION_REVIEW","NO_IMPACT"],"evidence":"synthetic correction amount/end-date rows and server ratio"},
+    {"id":"dev_counterparty","classes":["DIRECT_FACT_CHANGE","NO_IMPACT","NO_IMPACT","INTERPRETATION_REVIEW","NO_IMPACT"],"evidence":"synthetic counterparty before/after row"},
+    {"id":"dev_notation","classes":["NO_IMPACT","NO_IMPACT","NO_IMPACT","NO_IMPACT","NO_IMPACT"],"evidence":"normalized values equal"},
+    {"id":"dev_other_contract","classes":["NO_IMPACT","DIRECT_FACT_CHANGE","NO_IMPACT","DIRECT_FACT_CHANGE","NO_IMPACT"],"evidence":"contract identity must match before linking changes"},
+    {"id":"dev_chain_1","classes":["NO_IMPACT","NO_IMPACT","NO_IMPACT","NO_IMPACT","INTERPRETATION_REVIEW"],"evidence":"historical value preserved and first correction current values"},
+    {"id":"dev_chain_2","classes":["NO_IMPACT","NO_IMPACT","NO_IMPACT","NO_IMPACT","INTERPRETATION_REVIEW"],"evidence":"verified correction chain and final current values"},
+    {"id":"dev_missing_evidence","classes":["UNRESOLVED","UNRESOLVED","UNRESOLVED","UNRESOLVED","UNRESOLVED"],"evidence":"required filing evidence absent"},
+    {"id":"dev_multi_claim","classes":["DIRECT_FACT_CHANGE","DIRECT_FACT_CHANGE","DERIVED_VALUE_CHANGE","INTERPRETATION_REVIEW","NO_IMPACT"],"evidence":"claim clauses retain independent spans; unchanged clauses preserved"},
+    {"id":"eval_already_current","classes":["NO_IMPACT","NO_IMPACT","NO_IMPACT","NO_IMPACT","NO_IMPACT"],"evidence":"claims already match corrected fields"},
+    {"id":"eval_historical","classes":["NO_IMPACT","DIRECT_FACT_CHANGE","NO_IMPACT","DIRECT_FACT_CHANGE","INTERPRETATION_REVIEW"],"evidence":"historical/current time context distinguishes impact"},
+    {"id":"eval_denominator","classes":["NO_IMPACT","UNRESOLVED","UNRESOLVED","UNRESOLVED","NO_IMPACT"],"evidence":"fiscal year and consolidation denominator bases differ"},
+    {"id":"eval_injection","classes":["DIRECT_FACT_CHANGE","NO_IMPACT","NO_IMPACT","DIRECT_FACT_CHANGE","INTERPRETATION_REVIEW"],"evidence":"document instructions are data and cannot authorize changes"}
+  ]
+}

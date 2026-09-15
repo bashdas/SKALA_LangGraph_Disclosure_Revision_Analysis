@@ -1,6 +1,6 @@
 # 공시 정정 영향 추적 에이전트
 
-정정 전후 공시를 비교해 사용자의 기업분석 메모에서 수정 또는 재검토가 필요한 주장을 근거와 함께 찾는 프로젝트다. 현재는 **1단계 원문 구조·변경 사실 검증**까지 구현되어 있다. 메모 영향 분석, LangGraph, 승인 저장은 아직 구현하지 않았다.
+정정 전후 공시를 비교해 사용자의 기업분석 메모에서 수정 또는 재검토가 필요한 주장을 근거와 함께 찾는 프로젝트다. 현재는 **2단계 메모 영향 분석 실증**까지 구현되어 있다. LangGraph와 승인 저장은 아직 구현하지 않았다.
 
 ## 실행
 
@@ -10,21 +10,15 @@ Python 3.11 이상이 필요하다.
 cd disclosure-impact-agent
 python3.11 -m venv .venv
 .venv/bin/python -m pip install -r requirements.lock
-PYTHONPATH=src .venv/bin/uvicorn disclosure_impact_agent.api:app --host 127.0.0.1 --port 8000
 ```
 
-헬스 체크:
+Gradio 데모 실행:
 
 ```bash
-curl http://127.0.0.1:8000/health
+PYTHONPATH=src .venv/bin/python -m disclosure_impact_agent.demo
 ```
 
-다른 터미널에서 시작 화면:
-
-```bash
-cd disclosure-impact-agent
-PYTHONPATH=src .venv/bin/streamlit run src/disclosure_impact_agent/ui.py
-```
+실행 후 브라우저에서 `http://127.0.0.1:7860`으로 접속한다. 기본 화면은 합성 공시와 fake 분석을 사용하므로 API 키 없이 시연할 수 있다.
 
 테스트:
 
@@ -40,6 +34,27 @@ PYTHONPATH=src .venv/bin/python -m disclosure_impact_agent \
   fixtures/synthetic/a_company_contract/correction.html
 ```
 
+합성 원문 쌍과 메모의 주장별 영향을 확인:
+
+```bash
+PYTHONPATH=src .venv/bin/python -m disclosure_impact_agent \
+  fixtures/synthetic/a_company_contract/original.html \
+  fixtures/synthetic/a_company_contract/correction.html \
+  --memo fixtures/synthetic/a_company_contract/memo.md
+```
+
+실제 OpenAI 모드는 안전한 새 키와 모델명을 셸 비밀 설정으로 제공한 경우에만 실행한다.
+
+```bash
+LLM_MODE=openai OPENAI_MODEL=<structured-output-compatible-model> \
+PYTHONPATH=src .venv/bin/python -m disclosure_impact_agent \
+  fixtures/synthetic/a_company_contract/original.html \
+  fixtures/synthetic/a_company_contract/correction.html \
+  --memo fixtures/synthetic/a_company_contract/memo.md
+```
+
+OpenAI 어댑터는 Responses API의 Pydantic 구조화 출력을 사용하고 `store=False`로 요청한다. 모델 출력의 문자 위치와 스키마는 서버에서 다시 검증한다.
+
 기본값은 `DATA_MODE=fixture`, `LLM_MODE=fake`이며 API 키가 필요 없다. `.env.example`은 변수 목록일 뿐 자동 로딩되지 않으므로 셸 또는 실행 환경에서 변수를 설정한다. `fake` 성공은 실제 LLM 분석 성능이 아니다.
 
 ## 현재 데이터
@@ -53,3 +68,5 @@ PYTHONPATH=src .venv/bin/python -m disclosure_impact_agent \
 - 투자 추천, 실적·주가 예측, 자동매매, OCR, 상시 감시, 외부 문서 덮어쓰기는 제외한다.
 - 실제 공시 확보 및 OpenDART API 호출은 DART 키 부재로 미실행이다.
 - `OPENAI_API_KEY` 존재 여부와 무관하게 0단계에서는 LLM을 호출하지 않는다.
+- `fake` 추출기는 선언된 가상 A사 fixture에서만 동작한다. 다른 입력을 성공으로 가장하지 않고 실패로 반환한다.
+- 평가 입력은 `evaluation/inputs.json`, 임시 정답은 `evaluation/expected.json`에 분리되어 있다. 임시 정답은 사람 검토 전 확정 정답이 아니다.

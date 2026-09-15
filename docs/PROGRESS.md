@@ -60,3 +60,33 @@
 ### 다음 단계 준비
 
 근거가 연결된 필드 변경과 명시적 보류 결과를 2단계 ClaimExtractor/ImpactAnalyzer 입력으로 사용할 수 있다. 실제 자료 일반화는 DART 키 또는 사용자가 제공하는 원문이 필요하다.
+
+## 2단계 — 완료 (2026-09-15)
+
+### 구현
+
+- 문장/주장/값의 절대 문자 위치, 대상 회사·계약, 사실/계산/전망, 현재/역사/가정 시점 스키마를 추가했다.
+- 교체 가능한 `ClaimExtractor`, `ImpactAnalyzer`, `RevisionProposer` 인터페이스를 구현했다.
+- 선언된 synthetic fixture 전용 fake 추출기와 일반 코드 기반 영향 분석·수정 합성기를 구현했다.
+- 다섯 영향 분류, change/evidence 연결, 짧은 사유, 부족 자료, 수정 허용 여부를 반환한다.
+- 숫자·날짜는 검증된 정정 후 필드, 비율은 서버 `Decimal` 계산에서만 제안한다. 증거 위치 존재와 의미상 구조화 값 연결을 별도 필드로 기록한다.
+- 한 문장의 비중첩 복수 편집을 병합하고 다른 절을 보존한다. 전망과 보류는 자동 수정하지 않는다.
+- OpenAI SDK 3.14.0 Responses API/Pydantic 구조화 출력 어댑터, 환경변수 모델, timeout/retry 한도, 실패 처리를 구현했다.
+- 12개/60주장 synthetic 평가 입력을 개발 8/고정 평가 4로 분리하고 임시 정답을 런타임 입력과 분리했다.
+
+### 실제 검증
+
+- 전체 38개 테스트 통과, 실패 0건, 의존성 deprecation 경고 1건.
+- 오프라인 CLI에서 5개 주장을 `DIRECT`, `DERIVED`, `DIRECT`, `INTERPRETATION`, `NO_IMPACT`로 반환하고 검증된 제안 3개를 생성했다.
+- fake fixture 제한, 시간초과, 모델 누락, 불완전 OpenAI 응답, 잘못된 문자 위치, 계산 기준 누락을 실패/보류로 확인했다.
+- OpenAI SDK의 설치된 `responses.parse` 시그니처가 `model`, `input`, `instructions`, `text_format`, `store`, `timeout`을 지원함을 로컬에서 확인했다.
+
+### 미검증
+
+- 실제 OpenAI 호출 0회. 환경 키는 존재하지만 모델 미설정이며, 채팅에 노출된 키는 사용하지 않았다.
+- 실제 공시 0건. 12개 평가 정답은 사람 미검토 임시 정답이며 의미 성능 점수를 산출하지 않았다.
+- fake 통과는 실제 LLM 또는 일반 한국어 분석 성능 성공이 아니다.
+
+### 다음 단계 준비
+
+구조화된 claims/impacts/proposals와 명시적 failure 결과가 3단계 그래프 상태 입력으로 준비됐다. 승인 저장은 구현하지 않았다.
