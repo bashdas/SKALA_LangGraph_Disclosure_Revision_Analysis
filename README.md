@@ -1,6 +1,6 @@
 # 공시 정정 영향 추적 에이전트
 
-정정 전후 공시 원문을 비교하고, 변경 사실이 기업분석 메모의 어떤 주장에 영향을 주는지 근거와 함께 보여주는 실증 프로젝트다. 현재 구현은 **합성 fixture 기반 1단계 원문 검증 + 2단계 메모 영향 분석 + 최소 LangGraph 흐름 + Gradio 시연 화면**까지 포함한다.
+정정 전후 공시 원문을 비교하고, 변경 사실이 기업분석 메모의 어떤 주장에 영향을 주는지 근거와 함께 보여주는 실증 프로젝트다. 현재 구현은 **합성 fixture 기반 원문 검증 + LangGraph 오케스트레이션 + LangChain Chain·Retriever·Tool 기반 메모 영향 분석 + Gradio 시연 화면**까지 포함한다.
 
 > 현재 기본 데모는 실제 DART 공시나 실제 LLM 결과가 아니라, 명시된 합성 공시와 결정적 fake 분석을 사용한다. 따라서 데모 성공을 실제 API·LLM 성능 검증으로 해석하면 안 된다.
 
@@ -10,14 +10,14 @@
 START
   → parse_filings       공시 원문 파싱 및 근거 위치 보존
   → compare_changes     정정 전후 구조화 필드 비교
-  → analyze_claims      메모 주장 추출·영향 분류·수정안 생성
+  → analyze_claims      근거 검색·Tool 실행·메모 주장 추출·영향 분류·수정안 생성
   → conditional
       ├ complete        분석 완료
       └ needs_review    실패·미해결 항목 존재
   → END
 ```
 
-LangGraph의 `StateGraph`에 명시적인 상태, 처리 노드, 일반 엣지와 조건부 엣지만 적용했다. 웹 검색, 다중 에이전트, 보고서 생성 같은 시연 핵심과 무관한 구조는 넣지 않았다.
+LangGraph의 `StateGraph`에 명시적인 상태, 처리 노드, 일반 엣지와 조건부 엣지를 적용했다. `analyze_claims` 노드에서는 파싱된 `EvidenceBlock`을 LangChain `Document`로 변환해 Retriever로 검색하고, 증거 조회·비율 계산 Tool을 실행한다. LangChain Chain 모드에서는 `ChatPromptTemplate → ChatOpenAI → ClaimBatch 구조화 출력`으로 주장을 추출한다. 웹 검색, 다중 에이전트, 자동 승인 저장은 현재 범위에 포함하지 않았다.
 
 ## 빠른 실행
 
@@ -53,7 +53,7 @@ GRADIO_SERVER_PORT=7861 PYTHONPATH=src \
 PYTHONPATH=src .venv/bin/pytest
 ```
 
-현재 자동 테스트는 파싱, 정규화, 변경 계산, 안전한 업로드, 주장 분석, 평가 데이터, OpenAI 어댑터 경계, Gradio 구성 및 LangGraph 분기를 검사한다.
+현재 자동 테스트 45개가 통과했으며, 파싱·정규화·변경 계산·안전한 업로드·주장 분석·평가 데이터·OpenAI 어댑터 경계·LangGraph 분기와 LangChain Retriever/Tool을 검사한다.
 
 LangChain 구성요소도 포함한다. `langchain` 모드는 `ChatPromptTemplate`과 구조화 출력 Chain으로 주장을 추출하고, 파싱된 `EvidenceBlock`을 오프라인 Retriever로 검색하며, 증거 조회·비율 계산 Tool을 실행한다. 숫자 계산과 증거 최종 검증은 계속 결정적 코드가 담당한다. 사용하려면 의존성을 설치한 뒤 `LLM_MODE=langchain`, `OPENAI_MODEL`을 설정한다.
 
@@ -99,16 +99,30 @@ PYTHONPATH=src .venv/bin/python -m disclosure_impact_agent.demo
 
 OpenAI 어댑터는 Responses API의 Pydantic 구조화 출력을 사용하고 `store=False`로 요청하며, 스키마 오류·타임아웃·거절·재시도 한도 초과를 `NO_IMPACT`로 숨기지 않는다. 화면에는 API 키의 설정 여부만 표시하고 키 자체는 출력하지 않는다.
 
+## LangChain 모드
+
+LangChain 모드는 OpenAI SDK 직접 호출 모드와 같은 그래프와 결정적 검증기를 사용하면서, 주장 추출만 LangChain Chain으로 수행한다. Retriever는 관련 근거 후보를 찾고, Tool은 검증된 증거 조회와 정확한 `Decimal` 비율 계산을 제공한다. 검색 결과와 Tool 결과는 그래프 상태에 기록되며, 최종 근거 인정·영향 분류·수정 허용 여부는 결정적 코드가 판정한다.
+
+```bash
+export OPENAI_API_KEY="새로_발급한_키"
+export OPENAI_MODEL="사용할_구조화_출력_지원_모델"
+export LLM_MODE="langchain"
+PYTHONPATH=src .venv/bin/python -m disclosure_impact_agent.demo
+```
+
+`langchain-openai`가 설치되어 있어야 하며, API 키가 없으면 외부 호출 없이 설정 보류로 종료한다.
+
 ## 주요 코드 위치
 
 - `src/disclosure_impact_agent/demo.py`: Gradio 시연 화면과 샘플 실행
-- `src/disclosure_impact_agent/graph.py`: 최소 LangGraph 상태와 노드·분기 구성
+- `src/disclosure_impact_agent/graph.py`: LangGraph 상태와 노드·분기 구성
 - `src/disclosure_impact_agent/parser.py`: HTML/XML/TXT 원문 파싱과 근거 위치 생성
 - `src/disclosure_impact_agent/analysis.py`: 정정 전후 필드 변경과 비율 계산
 - `src/disclosure_impact_agent/service.py`: 원문 비교와 메모 분석 연결
 - `src/disclosure_impact_agent/memo_analysis.py`: 주장·영향·수정안 인터페이스와 분석 로직
 - `src/disclosure_impact_agent/fake_llm.py`: 선언된 fixture 전용 결정적 테스트 대역
 - `src/disclosure_impact_agent/openai_llm.py`: 선택적 OpenAI 구조화 출력 어댑터
+- `src/disclosure_impact_agent/langchain_components.py`: LangChain Chain·Retriever·Tool 구성요소
 - `evaluation/`: 12개 합성 시나리오와 60개 이상 주장 평가 입력·임시 정답
 - `tests/`: 단계별 단위·통합 테스트
 
