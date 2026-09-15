@@ -9,8 +9,10 @@ description = "Track how corrected Korean contract disclosures affect analysis m
 requires-python = ">=3.11"
 dependencies = [
   "gradio==6.27.0",
+  "langgraph==1.2.11",
   "openai==3.14.0",
   "pydantic==2.13.5",
+  "python-dotenv==1.2.3",
 ]
 
 [project.optional-dependencies]

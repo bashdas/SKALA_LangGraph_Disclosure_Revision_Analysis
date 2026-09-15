@@ -6,6 +6,11 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from disclosure_impact_agent.environment import load_project_environment
+
+
+load_project_environment()
+
 
 class Settings(BaseModel):
     """Validated runtime settings with safe offline defaults."""

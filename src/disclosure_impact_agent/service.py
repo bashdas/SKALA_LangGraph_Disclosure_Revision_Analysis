@@ -5,7 +5,7 @@ from disclosure_impact_agent.fake_llm import FixtureClaimExtractor
 from disclosure_impact_agent.interfaces import ClaimExtractor
 from disclosure_impact_agent.memo_analysis import DeterministicImpactAnalyzer, DeterministicRevisionProposer
 from disclosure_impact_agent.memo_models import AnalysisFailure, ImpactClass, MemoAnalysisResult
-from disclosure_impact_agent.models import FilingDocument
+from disclosure_impact_agent.models import EvidenceBlock, FieldChange, FilingDocument, RatioCalculation
 
 
 def analyze_memo(
@@ -20,14 +20,18 @@ def analyze_memo(
     timeout_seconds: float = 30,
     max_retries: int = 2,
     max_memo_chars: int = 5_000,
+    changes: list[FieldChange] | None = None,
+    ratio: RatioCalculation | None = None,
+    evidence: dict[str, EvidenceBlock] | None = None,
 ) -> MemoAnalysisResult:
     if len(memo) > max_memo_chars:
         return _failure(llm_mode, model, "input_validation", "memo_too_large", f"memo exceeds {max_memo_chars} characters")
     correction = reconcile_correction_body(correction)
-    relation = relate_contracts(original, correction)
-    changes = compare_documents(original, correction, relation)
-    ratio = calculate_sales_ratio(correction)
-    evidence = {block.evidence_id: block for document in (original, correction) for block in document.evidence_blocks}
+    if changes is None:
+        relation = relate_contracts(original, correction)
+        changes = compare_documents(original, correction, relation)
+    ratio = ratio or calculate_sales_ratio(correction)
+    evidence = evidence or {block.evidence_id: block for document in (original, correction) for block in document.evidence_blocks}
     if extractor is None:
         if llm_mode == "fake":
             extractor = FixtureClaimExtractor()

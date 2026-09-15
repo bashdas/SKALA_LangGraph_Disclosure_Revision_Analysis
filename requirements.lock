@@ -1,6 +1,8 @@
 # Direct dependencies pinned for a reproducible stage-0 environment.
 # Install with: python -m pip install -r requirements.lock
 gradio==6.27.0
+langgraph==1.2.11
 openai==3.14.0
 pydantic==2.13.5
+python-dotenv==1.2.3
 pytest==9.1.1

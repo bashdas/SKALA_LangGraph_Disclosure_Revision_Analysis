@@ -1,16 +1,14 @@
 from __future__ import annotations
 
 import os
-from datetime import date
 from pathlib import Path
 
 import gradio as gr
 
-from disclosure_impact_agent.analysis import compare_documents, reconcile_correction_body, relate_contracts
-from disclosure_impact_agent.fake_llm import SUPPORTED_SCENARIO
-from disclosure_impact_agent.models import DocumentFormat, SourceKind
-from disclosure_impact_agent.parser import parse_filing
-from disclosure_impact_agent.service import analyze_memo
+from disclosure_impact_agent.environment import load_project_environment
+from disclosure_impact_agent.graph import run_review_graph
+
+load_project_environment()
 
 PROJECT_ROOT = Path(__file__).parents[2]
 FIXTURE_DIR = PROJECT_ROOT / "fixtures/synthetic/a_company_contract"
@@ -32,23 +30,19 @@ def run_demo(
     model: str,
 ) -> tuple[str, list[list[str]], list[list[str]], str]:
     """One demo path: parse -> compare -> connect memo claims -> show proposals."""
-    original = parse_filing(
-        original_html.encode(), document_id="demo-original", original_filename="original.html",
-        document_format=DocumentFormat.HTML, source_kind=SourceKind.SYNTHETIC,
-        source_verified=True, synthetic=True, submitted_on=date(2026, 1, 1),
-    )
-    correction = reconcile_correction_body(parse_filing(
-        correction_html.encode(), document_id="demo-correction", original_filename="correction.html",
-        document_format=DocumentFormat.HTML, source_kind=SourceKind.SYNTHETIC,
-        source_verified=True, synthetic=True, submitted_on=date(2026, 6, 1),
-        corrects_document_id=original.document_id,
-    ))
-    relation = relate_contracts(original, correction)
-    changes = compare_documents(original, correction, relation)
-    result = analyze_memo(
-        memo, original, correction, scenario_id=SUPPORTED_SCENARIO if llm_mode == "fake" else None,
+    if llm_mode == "openai" and not os.getenv("OPENAI_API_KEY"):
+        return (
+            "### 설정 보류\n`OPENAI_API_KEY`가 없습니다. 프로젝트 루트 `.env`를 확인하세요.",
+            [], [], "자동 수정안이 없습니다.",
+        )
+    state = run_review_graph(
+        original_html, correction_html, memo,
         llm_mode=llm_mode, model=model.strip() or None,
+        timeout_seconds=float(os.getenv("LLM_TIMEOUT_SECONDS", "60")),
+        max_retries=int(os.getenv("LLM_MAX_RETRIES", "1")),
     )
+    changes = state["changes"]
+    result = state["result"]
 
     change_rows = [
         [
@@ -76,7 +70,8 @@ def run_demo(
     else:
         status = (
             f"### 분석 완료\n데이터: **synthetic** · LLM 모드: **{result.llm_mode}** · "
-            f"검토 주장: **{result.reviewed_claim_count}** · 보류: **{result.unresolved_claim_count}**"
+            f"검토 주장: **{result.reviewed_claim_count}** · 보류: **{result.unresolved_claim_count}** · "
+            f"그래프: **{' → '.join(state['events'])}**"
         )
     proposals = "\n".join(
         f"- ~~{proposal.original_sentence}~~  \n  → {proposal.proposed_sentence}"
@@ -87,11 +82,18 @@ def run_demo(
 
 def build_demo() -> gr.Blocks:
     original, correction, memo = example_values()
+    configured_mode = os.getenv("LLM_MODE", "fake").lower()
+    if configured_mode not in {"fake", "openai"}:
+        configured_mode = "fake"
+    key_status = "설정됨" if os.getenv("OPENAI_API_KEY") else "미설정"
     with gr.Blocks(title="공시 정정 영향 추적 데모") as demo:
         gr.Markdown("# 공시 정정 영향 추적\n합성 공시의 변경이 분석 메모의 어느 주장에 영향을 주는지 확인합니다.")
-        gr.Markdown("**주의:** 기본 예시는 mock/synthetic 데이터이며 실제 DART·실제 LLM 검증 결과가 아닙니다.")
+        gr.Markdown(
+            "**주의:** 입력 공시는 mock/synthetic 데이터입니다. "
+            f"OpenAI API 키: **{key_status}** (키 값은 화면에 표시하지 않음)"
+        )
         with gr.Row():
-            llm_mode = gr.Radio(["fake", "openai"], value="fake", label="분석 모드")
+            llm_mode = gr.Radio(["fake", "openai"], value=configured_mode, label="분석 모드")
             model = gr.Textbox(value=os.getenv("OPENAI_MODEL", ""), label="OpenAI 모델명", placeholder="openai 모드에서만 필요")
         with gr.Accordion("입력 데이터", open=False):
             original_input = gr.Code(value=original, language="html", label="정정 전 공시")

@@ -6,9 +6,13 @@ from datetime import date
 from pathlib import Path
 
 from disclosure_impact_agent.analysis import calculate_sales_ratio, compare_sequence, reconcile_correction_body
+from disclosure_impact_agent.environment import load_project_environment
 from disclosure_impact_agent.models import DocumentFormat, SourceKind
 from disclosure_impact_agent.parser import parse_filing, validate_evidence_integrity
 from disclosure_impact_agent.service import analyze_memo
+
+
+load_project_environment()
 
 
 def inspect_pair(original_path: Path, correction_path: Path) -> dict:

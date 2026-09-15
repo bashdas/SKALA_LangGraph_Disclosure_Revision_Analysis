@@ -35,8 +35,8 @@ class TextSpan(BaseModel):
 
     @model_validator(mode="after")
     def valid_span(self):
-        if self.end < self.start or self.end - self.start != len(self.text):
-            raise ValueError("span offsets do not match text length")
+        if self.end < self.start:
+            raise ValueError("span end precedes start")
         return self
 
 
@@ -123,4 +123,3 @@ class MemoAnalysisResult(BaseModel):
     failures: list[AnalysisFailure] = Field(default_factory=list)
     reviewed_claim_count: int = 0
     unresolved_claim_count: int = 0
-

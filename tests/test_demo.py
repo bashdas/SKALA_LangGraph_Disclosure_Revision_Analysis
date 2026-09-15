@@ -17,3 +17,14 @@ def test_gradio_demo_runs_main_mock_flow():
 def test_gradio_blocks_can_be_built_without_launching_server():
     demo = build_demo()
     assert demo is not None
+
+
+def test_openai_demo_reports_missing_key_without_api_call(monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    original, correction, memo = example_values()
+
+    status, changes, impacts, proposals = run_demo(original, correction, memo, "openai", "test-model")
+
+    assert "OPENAI_API_KEY" in status
+    assert changes == [] and impacts == []
+    assert proposals == "자동 수정안이 없습니다."
