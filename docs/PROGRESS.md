@@ -90,6 +90,27 @@
 ### 다음 단계 준비
 
 구조화된 claims/impacts/proposals와 명시적 failure 결과가 3단계 그래프 상태 입력으로 준비됐다. 승인 저장은 구현하지 않았다.
+
+## LangChain 구성요소 보완 — 완료 (2026-09-15)
+
+### 구현
+
+- `langchain-core` 기반 LCEL 주장 추출 Chain 빌더를 추가했다. `ChatPromptTemplate`과 `ChatOpenAI.with_structured_output(ClaimBatch)`를 사용하며, `langchain-openai`는 LangChain 모드에서만 지연 import한다.
+- 파싱된 `EvidenceBlock`을 LangChain `Document`로 변환하고, 오프라인 재현 가능한 키워드 `EvidenceRetriever`를 추가했다. 검색 결과에는 evidence ID·문서 해시·위치 메타데이터가 보존된다.
+- 증거 조회 Tool과 정확한 `Decimal` 비율 계산 Tool을 추가했다. Tool은 읽기/계산만 수행하며 승인·저장·근거 최종 판정은 결정적 코드에 남겼다.
+- LangGraph `analyze_claims` 노드에서 Retriever와 증거 조회 Tool을 실행하고 결과 ID를 상태에 기록했다. 기존 fake/openai 모드와 노드 순서는 보존했다.
+- 데모에 `langchain` 모드를 추가하고, API 키가 없으면 외부 호출 없이 설정 보류한다.
+
+### 실제 검증
+
+- 전체 테스트 45개 통과(실패 0건).
+- 합성 fixture 그래프에서 검색된 증거 ID와 Tool 결과의 `found=true`를 확인했다.
+- 90억원/800억원 비율 Tool이 정확히 `11.25`를 반환하고 0 분모를 `unresolved`로 거부함을 확인했다.
+
+### 미해결
+
+- `langchain-openai`를 통한 실제 Chain 호출은 모델/API 키가 설정된 환경에서 별도 검증이 필요하다.
+- Retriever는 현재 오프라인 키워드 방식이며, 대규모 실제 공시에는 메타데이터 필터와 벡터 저장소 평가가 필요하다.
 # 데모 연결 보완 (2026-09-15)
 
 - 프로젝트 루트 `.env` 자동 로딩을 추가했다. 기존 셸 환경변수는 덮어쓰지 않는다.

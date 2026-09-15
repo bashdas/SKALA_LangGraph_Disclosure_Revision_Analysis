@@ -55,6 +55,8 @@ PYTHONPATH=src .venv/bin/pytest
 
 현재 자동 테스트는 파싱, 정규화, 변경 계산, 안전한 업로드, 주장 분석, 평가 데이터, OpenAI 어댑터 경계, Gradio 구성 및 LangGraph 분기를 검사한다.
 
+LangChain 구성요소도 포함한다. `langchain` 모드는 `ChatPromptTemplate`과 구조화 출력 Chain으로 주장을 추출하고, 파싱된 `EvidenceBlock`을 오프라인 Retriever로 검색하며, 증거 조회·비율 계산 Tool을 실행한다. 숫자 계산과 증거 최종 검증은 계속 결정적 코드가 담당한다. 사용하려면 의존성을 설치한 뒤 `LLM_MODE=langchain`, `OPENAI_MODEL`을 설정한다.
+
 ## CLI 사용
 
 합성 HTML 원문 쌍의 변경 결과를 JSON으로 확인한다.

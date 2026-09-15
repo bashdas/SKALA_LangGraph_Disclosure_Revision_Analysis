@@ -40,6 +40,11 @@ def analyze_memo(
                 return _failure(llm_mode, model, "configuration", "missing_model", "OPENAI_MODEL is required")
             from disclosure_impact_agent.openai_llm import OpenAIClaimExtractor
             extractor = OpenAIClaimExtractor(model=model, timeout_seconds=timeout_seconds, max_retries=max_retries)
+        elif llm_mode == "langchain":
+            if not model:
+                return _failure(llm_mode, model, "configuration", "missing_model", "OPENAI_MODEL is required")
+            from disclosure_impact_agent.langchain_components import LangChainClaimExtractor
+            extractor = LangChainClaimExtractor(model=model, timeout_seconds=timeout_seconds, max_retries=max_retries)
         else:
             return _failure(llm_mode, model, "configuration", "invalid_mode", f"unsupported LLM mode: {llm_mode}")
     try:

@@ -21,23 +21,26 @@
 - 근거 없는 숫자를 제안하지 않는 제한적 수정안 생성
 - Gradio 화면에서 전체 흐름 시연
 
-기본 데모는 실제 공시가 아닌 synthetic fixture와 결정적 fake 분석을 사용한다. OpenAI 모드는 선택적으로 연결할 수 있으며, 아래에 실제 LLM 실행 결과를 별도로 기록한다.
+기본 데모는 실제 공시가 아닌 synthetic fixture와 결정적 fake 분석을 사용한다. 동일한 그래프에서 OpenAI SDK 직접 호출 방식과 LangChain Chain 방식을 선택할 수 있으며, 두 모드 모두 결정적 검증 단계를 통과한다.
 
 ## 2. 구현 내용
 
 ### 사용한 LangChain/LangGraph 기능
 
-이번 구현에서는 학습한 에이전트 오케스트레이션 범위에 맞춰 LangGraph를 작게 적용했다.
+LangGraph를 상위 오케스트레이터로 두고 LangChain의 Chain·Retriever·Tool을 분석 노드 안에 결합했다. LLM은 주장 추출을 담당하고 Retriever는 관련 근거 후보를 조회하며, 금액 계산·근거 무결성·영향 확정·수정 허용 여부는 결정적 코드가 담당한다.
 
 - `StateGraph`: 원문·메모·분석 결과를 명시적 상태로 관리
-- 노드: `parse_filings`, `compare_changes`, `analyze_claims`
 - 일반 엣지: 파싱 → 변경 계산 → 주장 영향 분석 순서 보장
-- 조건부 엣지: 결과에 실패·미해결 항목이 있으면 `needs_review`, 없으면 `complete`로 분기
+- 조건부 엣지: 실패·미해결 항목은 `needs_review`, 검증 완료는 `complete`로 분기
 - `START`, `END`: 실행 시작과 종료를 명확히 표현
+- LCEL Chain: `ChatPromptTemplate → ChatOpenAI → ClaimBatch 구조화 출력`
+- Retriever: `EvidenceBlock`을 LangChain `Document`로 변환해 관련 근거 후보 검색
+- Tool: 검증된 증거 조회와 `Decimal` 기반 계약금액/매출액 비율 계산
+- 상태 기록: 검색된 evidence ID와 Tool 반환 결과를 그래프 상태에 보존
 
 웹 검색, 다중 에이전트, 자동 승인 저장은 핵심 문제를 흐리지 않기 위해 이번 범위에서 제외했다.
 
-### 메인 그래프 코드
+### 메인 그래프
 
 파일: `src/disclosure_impact_agent/graph.py`
 
@@ -53,8 +56,7 @@ builder.add_edge(START, "parse_filings")
 builder.add_edge("parse_filings", "compare_changes")
 builder.add_edge("compare_changes", "analyze_claims")
 builder.add_conditional_edges(
-    "analyze_claims",
-    route_result,
+    "analyze_claims", route_result,
     {"complete": "complete_review", "needs_review": "mark_needs_review"},
 )
 builder.add_edge("complete_review", END)
@@ -62,6 +64,17 @@ builder.add_edge("mark_needs_review", END)
 
 review_graph = builder.compile()
 ```
+
+### Chain·Retriever·Tool 설계
+
+`langchain_components.py`에서 메모 주장 추출 Chain, 공시 근거 Retriever, 읽기 전용 Tool을 정의한다.
+
+- `ClaimBatch`: Chain의 구조화 출력 스키마
+- `EvidenceRetriever`: 파싱된 근거 블록의 오프라인 키워드 검색
+- `lookup_evidence`: evidence ID, 문서 해시, 원문 위치 조회
+- `calculate_verified_ratio`: 검증된 정수 금액을 `Decimal`로 계산하며 0 분모는 보류
+
+Retriever는 관련 근거 후보를 찾는 역할만 수행한다. 반환된 evidence ID와 문서 해시는 기존 증거 무결성 검증을 통과해야 하며, Tool은 승인·저장·원문 변경을 수행하지 않는다.
 
 ### 원문 비교와 영향 분석
 
@@ -73,7 +86,7 @@ review_graph = builder.compile()
 - `ImpactAnalyzer`: 주장과 필드 변경 연결 및 영향 분류
 - `RevisionProposer`: 검증된 값에 연결된 제한적 수정안 작성
 
-fake extractor는 지정된 synthetic fixture 시나리오에서만 동작한다. OpenAI 어댑터는 환경변수로 모델을 받고 Responses API의 Pydantic 구조화 출력을 사용한다. API 오류·타임아웃·스키마 오류는 영향 없음으로 숨기지 않고 실패/보류로 반환한다.
+`fake` 모드는 지정된 synthetic fixture 시나리오에서만 동작한다. `openai` 모드는 OpenAI Responses API와 Pydantic 구조화 출력을 직접 사용하고, `langchain` 모드는 `ChatPromptTemplate`과 `ChatOpenAI.with_structured_output(ClaimBatch)` Chain을 사용한다. 두 모드의 분석 결과는 동일한 결정적 영향 분석기와 수정 제안기를 통과한다. API 오류·타임아웃·스키마 오류는 영향 없음으로 숨기지 않고 실패/보류로 반환한다.
 
 ### 실행 방법
 
@@ -86,7 +99,7 @@ PYTHONPATH=src .venv/bin/python -m disclosure_impact_agent.demo
 
 브라우저에서 `http://127.0.0.1:7860`에 접속한다. 기본 fake 모드는 API 키가 필요 없다.
 
-OpenAI 모드는 프로젝트 루트 `.env`에 다음을 설정한 뒤 데모를 재시작한다.
+OpenAI SDK 직접 호출 모드:
 
 ```env
 LLM_MODE=openai
@@ -94,6 +107,14 @@ OPENAI_MODEL=gpt-5-mini
 OPENAI_API_KEY=새로_발급한_키
 LLM_TIMEOUT_SECONDS=120
 LLM_MAX_RETRIES=1
+```
+
+LangChain Chain 모드:
+
+```env
+LLM_MODE=langchain
+OPENAI_MODEL=gpt-5-mini
+OPENAI_API_KEY=새로_발급한_키
 ```
 
 키는 Git에 커밋하지 않는다.
@@ -115,7 +136,7 @@ LLM_MAX_RETRIES=1
 ### 테스트 결과
 
 ```text
-43 passed
+45 passed
 ```
 
 검증한 범위는 다음과 같다.
@@ -127,6 +148,8 @@ LLM_MAX_RETRIES=1
 - 정정표와 본문 충돌 시 보류
 - ZIP 경로 이탈·압축 해제 크기·XML 외부 엔티티 차단
 - 메모 주장별 영향 분류와 수정안
+- LangChain Retriever의 evidence 후보 검색과 증거 조회 Tool
+- 비율 계산 Tool의 정확한 `Decimal` 계산 및 0 분모 보류
 - LangGraph 정상/보류 분기
 - Gradio 구성 및 API 키 누락 처리
 
@@ -134,7 +157,7 @@ LLM_MAX_RETRIES=1
 
 2026-09-15에 synthetic 원문과 메모를 입력으로 실제 OpenAI Responses API 구조화 출력 요청을 1회 실행했다. 결과는 `분석 완료`, `LLM 모드: openai`, `검토 주장: 5`, `보류: 0`, 그래프 종료 `complete_review`였다. 모델이 반환한 한국어 오프셋은 서버에서 원문 문자열을 재검색해 Python 오프셋으로 검증한 뒤 사용했다.
 
-이 실행은 실제 LLM 호출과 구조화 응답 파싱 성공을 확인한 것이지만, 입력 공시가 synthetic이므로 실제 DART 문서에 대한 의미 성능 검증은 아니다. 실제 공시 파싱과 고정 평가 성능은 여전히 미검증이다.
+이 실행은 실제 LLM 호출과 구조화 응답 파싱 성공을 확인한 것이지만, 입력 공시가 synthetic이므로 실제 DART 문서에 대한 의미 성능 검증은 아니다. LangChain 모드는 동일한 `ClaimBatch` 스키마를 사용하는 선택 경로이며 `langchain-openai` 설치와 API 키가 필요한 환경에서 실행한다. 실제 공시 파싱과 고정 평가 성능은 여전히 미검증이다.
 
 ## 4. 어려웠던 점과 배운 점
 
@@ -149,6 +172,7 @@ LLM_MAX_RETRIES=1
 
 - 그래프 상태와 노드를 작게 설계하면 전체 데이터 흐름을 쉽게 추적할 수 있다.
 - 숫자 계산과 근거 검증은 LLM이 아니라 결정적 코드에 두는 것이 안전하다.
+- Chain·Retriever·Tool은 조합을 단순화하지만, 검색 결과를 사실로 확정하는 검증기를 대체하지 않는다.
 - fake는 테스트 속도를 높이지만 실제 LLM 성능을 증명하지 않으므로 검증 상태를 별도로 기록해야 한다.
 - 조건부 분기를 사용하면 실패/보류를 성공 결과와 분리할 수 있다.
 
@@ -165,7 +189,8 @@ LLM_MAX_RETRIES=1
 ## 프로젝트 산출물 위치
 
 - 데모: `src/disclosure_impact_agent/demo.py`
-- LangGraph: `src/disclosure_impact_agent/graph.py`
+- LangGraph 및 실행 상태: `src/disclosure_impact_agent/graph.py`
+- LangChain Chain·Retriever·Tool: `src/disclosure_impact_agent/langchain_components.py`
 - 원문 파서: `src/disclosure_impact_agent/parser.py`
 - 변경 계산: `src/disclosure_impact_agent/analysis.py`
 - 메모 영향 분석: `src/disclosure_impact_agent/memo_analysis.py`

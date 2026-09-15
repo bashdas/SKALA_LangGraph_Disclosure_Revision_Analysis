@@ -30,7 +30,7 @@ def run_demo(
     model: str,
 ) -> tuple[str, list[list[str]], list[list[str]], str]:
     """One demo path: parse -> compare -> connect memo claims -> show proposals."""
-    if llm_mode == "openai" and not os.getenv("OPENAI_API_KEY"):
+    if llm_mode in {"openai", "langchain"} and not os.getenv("OPENAI_API_KEY"):
         return (
             "### 설정 보류\n`OPENAI_API_KEY`가 없습니다. 프로젝트 루트 `.env`를 확인하세요.",
             [], [], "자동 수정안이 없습니다.",
@@ -83,7 +83,7 @@ def run_demo(
 def build_demo() -> gr.Blocks:
     original, correction, memo = example_values()
     configured_mode = os.getenv("LLM_MODE", "fake").lower()
-    if configured_mode not in {"fake", "openai"}:
+    if configured_mode not in {"fake", "openai", "langchain"}:
         configured_mode = "fake"
     key_status = "설정됨" if os.getenv("OPENAI_API_KEY") else "미설정"
     with gr.Blocks(title="공시 정정 영향 추적 데모") as demo:
@@ -93,7 +93,7 @@ def build_demo() -> gr.Blocks:
             f"OpenAI API 키: **{key_status}** (키 값은 화면에 표시하지 않음)"
         )
         with gr.Row():
-            llm_mode = gr.Radio(["fake", "openai"], value=configured_mode, label="분석 모드")
+            llm_mode = gr.Radio(["fake", "openai", "langchain"], value=configured_mode, label="분석 모드")
             model = gr.Textbox(value=os.getenv("OPENAI_MODEL", ""), label="OpenAI 모델명", placeholder="openai 모드에서만 필요")
         with gr.Accordion("입력 데이터", open=False):
             original_input = gr.Code(value=original, language="html", label="정정 전 공시")

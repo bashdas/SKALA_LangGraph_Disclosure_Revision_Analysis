@@ -39,6 +39,8 @@ class ReviewGraphState(TypedDict):
     result: NotRequired[MemoAnalysisResult]
     outcome: NotRequired[str]
     events: NotRequired[list[str]]
+    retrieved_evidence_ids: NotRequired[list[str]]
+    tool_results: NotRequired[list[dict]]
 
 
 def parse_filings(state: ReviewGraphState) -> dict:
@@ -69,13 +71,21 @@ def compare_changes(state: ReviewGraphState) -> dict:
 
 
 def analyze_claims(state: ReviewGraphState) -> dict:
+    from disclosure_impact_agent.langchain_components import EvidenceRetriever, evidence_documents, make_evidence_lookup_tool
+    retriever = EvidenceRetriever(documents=evidence_documents(state["evidence"]))
+    retrieved = retriever.invoke(state["memo"][:500])
+    lookup = make_evidence_lookup_tool(state["evidence"])
+    tool_results = [lookup.invoke({"evidence_id": doc.metadata["evidence_id"]}) for doc in retrieved]
     result = analyze_memo(
         state["memo"], state["original"], state["correction"],
         scenario_id=state.get("scenario_id"), llm_mode=state["llm_mode"], model=state.get("model"),
         timeout_seconds=state.get("timeout_seconds", 30), max_retries=state.get("max_retries", 2),
         changes=state["changes"], ratio=state["ratio"], evidence=state["evidence"],
     )
-    return {"result": result, "events": state.get("events", []) + ["analyze_claims"]}
+    return {"result": result,
+            "retrieved_evidence_ids": [doc.metadata["evidence_id"] for doc in retrieved],
+            "tool_results": tool_results,
+            "events": state.get("events", []) + ["analyze_claims"]}
 
 
 def route_result(state: ReviewGraphState) -> Literal["complete", "needs_review"]:
