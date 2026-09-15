@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "disclosure-impact-agent"
+version = "0.1.0"
+description = "Track how corrected Korean contract disclosures affect analysis memos"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi==0.141.1",
+  "pydantic==2.13.5",
+  "streamlit==1.63.0",
+  "uvicorn==0.35.0",
+]
+
+[project.optional-dependencies]
+test = [
+  "httpx==0.28.1",
+  "pytest==9.1.1",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

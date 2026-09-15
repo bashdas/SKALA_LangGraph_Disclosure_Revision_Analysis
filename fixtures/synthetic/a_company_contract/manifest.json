@@ -1,0 +1,13 @@
+{
+  "scenario_id": "synthetic-a-company-contract-v1",
+  "synthetic": true,
+  "real_company": false,
+  "description": "PROJECT_BRIEF.md의 가상 A사 공급계약 정정 사례",
+  "documents": [
+    {"id": "synthetic-original", "path": "original.html", "role": "original"},
+    {"id": "synthetic-correction", "path": "correction.html", "role": "correction"}
+  ],
+  "memo_path": "memo.md",
+  "expected_path": "expected.json"
+}
+

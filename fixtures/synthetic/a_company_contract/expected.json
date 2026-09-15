@@ -1,0 +1,18 @@
+{
+  "synthetic": true,
+  "human_review_status": "project-brief-example-not-independent-ground-truth",
+  "expected_changes": [
+    {"field": "contract_amount", "before_krw": 12000000000, "after_krw": 9000000000},
+    {"field": "contract_end_date", "before": "2026-12-31", "after": "2027-03-31"},
+    {"field": "counterparty", "before": "가상 B사", "after": "가상 B사", "changed": false}
+  ],
+  "derived_check": {"formula": "9000000000 / 80000000000 * 100", "result_percent": "11.25"},
+  "expected_claim_classes": [
+    "DIRECT_FACT_CHANGE",
+    "DERIVED_VALUE_CHANGE",
+    "DIRECT_FACT_CHANGE",
+    "INTERPRETATION_REVIEW",
+    "NO_IMPACT"
+  ],
+  "note": "1단계 파서 입력/기대치이며 아직 파서 또는 의미 분석 검증 결과가 아니다."
+}
