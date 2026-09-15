@@ -36,7 +36,7 @@
 
 ## LLM 연동 경계와 검증 상태
 
-주장 추출은 교체 가능한 `ClaimExtractor` 인터페이스 뒤에 두었다. `openai` 모드는 OpenAI Responses API를 직접 호출하고, `langchain` 모드는 `ChatPromptTemplate → ChatOpenAI → ClaimBatch 구조화 출력` Chain을 사용한다. 두 경로는 동일한 결정적 영향 분석기·수정 제안기·증거 검증기를 공유한다.
+주장 추출은 교체 가능한 `ClaimExtractor` 인터페이스 뒤에 두었다. `openai` 모드는 OpenAI Responses API를 직접 호출하고, `langchain` 모드는 `langchain-core`의 `ChatPromptTemplate → RunnableLambda` LCEL Chain으로 같은 구조화 출력 어댑터를 조립한다. 두 경로는 동일한 결정적 영향 분석기·수정 제안기·증거 검증기를 공유한다.
 
 LangGraph의 `analyze_claims` 노드는 파싱된 `EvidenceBlock`을 LangChain `Document`로 변환해 Retriever로 근거 후보를 찾고, 증거 조회·비율 계산 Tool을 실행한다. Retriever 결과는 후보일 뿐이며 evidence ID·문서 해시·원문 위치 검증을 통과해야 분석 근거로 인정된다.
 
@@ -44,7 +44,7 @@ LangGraph의 `analyze_claims` 노드는 파싱된 `EvidenceBlock`을 LangChain `
 
 [공식 OpenAI Responses API 문서](https://developers.openai.com/api/reference/cli/resources/responses/methods/create)에 따라 `responses.parse`, Pydantic `text_format`, 환경변수 모델, `store=False`, 제한된 timeout/retry를 사용한다. 공식 문서는 Responses API가 JSON 구조화 출력을 지원하고 `failed`/`incomplete` 상태가 존재함을 명시한다.
 
-고정 평가 시점에는 안전한 평가용 모델 설정이 없었고, 사용자가 채팅에 게시한 키는 노출된 자격 증명이므로 평가에 사용하지 않았다. 이후 synthetic 입력에 대한 OpenAI 구조화 출력 smoke test는 성공했지만, LangChain Chain의 실제 API 호출과 실제 DART 문서 기반 의미 성능은 아직 평가하지 않았다.
+고정 평가 시점에는 안전한 평가용 모델 설정이 없었고, 사용자가 채팅에 게시한 키는 노출된 자격 증명이므로 평가에 사용하지 않았다. 이후 synthetic 입력에 대한 OpenAI 구조화 출력 smoke test는 성공했지만, LangChain Chain 경로의 실제 API 호출과 실제 DART 문서 기반 의미 성능은 아직 평가하지 않았다.
 
 ## 아직 미검증
 

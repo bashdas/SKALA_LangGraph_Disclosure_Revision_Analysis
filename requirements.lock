@@ -3,7 +3,6 @@
 gradio==6.27.0
 langgraph==1.2.11
 langchain-core==1.6.3
-langchain-openai==1.1.11
 openai==3.14.0
 pydantic==2.13.5
 python-dotenv==1.2.3

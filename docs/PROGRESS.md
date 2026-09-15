@@ -95,7 +95,7 @@
 
 ### 구현
 
-- `langchain-core` 기반 LCEL 주장 추출 Chain 빌더를 추가했다. `ChatPromptTemplate`과 `ChatOpenAI.with_structured_output(ClaimBatch)`를 사용하며, `langchain-openai`는 LangChain 모드에서만 지연 import한다.
+- `langchain-core` 기반 LCEL 주장 추출 Chain 빌더를 추가했다. `ChatPromptTemplate`과 `RunnableLambda`로 기존 OpenAI Responses API 구조화 출력 어댑터를 조립한다. 별도 provider 패키지는 사용하지 않아 기존 OpenAI SDK 고정 버전과 충돌하지 않는다.
 - 파싱된 `EvidenceBlock`을 LangChain `Document`로 변환하고, 오프라인 재현 가능한 키워드 `EvidenceRetriever`를 추가했다. 검색 결과에는 evidence ID·문서 해시·위치 메타데이터가 보존된다.
 - 증거 조회 Tool과 정확한 `Decimal` 비율 계산 Tool을 추가했다. Tool은 읽기/계산만 수행하며 승인·저장·근거 최종 판정은 결정적 코드에 남겼다.
 - LangGraph `analyze_claims` 노드에서 Retriever와 증거 조회 Tool을 실행하고 결과 ID를 상태에 기록했다. 기존 fake/openai 모드와 노드 순서는 보존했다.
@@ -109,7 +109,7 @@
 
 ### 미해결
 
-- `langchain-openai`를 통한 실제 Chain 호출은 모델/API 키가 설정된 환경에서 별도 검증이 필요하다.
+- LangChain Chain 경로의 실제 API 호출은 모델/API 키가 설정된 환경에서 별도 검증이 필요하다.
 - Retriever는 현재 오프라인 키워드 방식이며, 대규모 실제 공시에는 메타데이터 필터와 벡터 저장소 평가가 필요하다.
 # 데모 연결 보완 (2026-09-15)
 

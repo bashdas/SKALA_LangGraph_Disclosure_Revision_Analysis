@@ -33,7 +33,7 @@ LangGraph를 상위 오케스트레이터로 두고 LangChain의 Chain·Retrieve
 - 일반 엣지: 파싱 → 변경 계산 → 주장 영향 분석 순서 보장
 - 조건부 엣지: 실패·미해결 항목은 `needs_review`, 검증 완료는 `complete`로 분기
 - `START`, `END`: 실행 시작과 종료를 명확히 표현
-- LCEL Chain: `ChatPromptTemplate → ChatOpenAI → ClaimBatch 구조화 출력`
+- LCEL Chain: `ChatPromptTemplate → RunnableLambda → OpenAI Responses API ClaimBatch 구조화 출력`
 - Retriever: `EvidenceBlock`을 LangChain `Document`로 변환해 관련 근거 후보 검색
 - Tool: 검증된 증거 조회와 `Decimal` 기반 계약금액/매출액 비율 계산
 - 상태 기록: 검색된 evidence ID와 Tool 반환 결과를 그래프 상태에 보존
@@ -67,7 +67,7 @@ review_graph = builder.compile()
 
 ### Chain·Retriever·Tool 설계
 
-`langchain_components.py`에서 메모 주장 추출 Chain, 공시 근거 Retriever, 읽기 전용 Tool을 정의한다.
+`langchain_components.py`에서 메모 주장 추출 Chain, 공시 근거 Retriever, 읽기 전용 Tool을 정의한다. OpenAI SDK 직접 호출 어댑터를 `langchain-core`의 `ChatPromptTemplate`과 `RunnableLambda`로 조립해, 현재 고정된 OpenAI SDK 버전과 별도 provider 패키지의 의존성 충돌을 피했다.
 
 - `ClaimBatch`: Chain의 구조화 출력 스키마
 - `EvidenceRetriever`: 파싱된 근거 블록의 오프라인 키워드 검색
@@ -86,7 +86,7 @@ Retriever는 관련 근거 후보를 찾는 역할만 수행한다. 반환된 ev
 - `ImpactAnalyzer`: 주장과 필드 변경 연결 및 영향 분류
 - `RevisionProposer`: 검증된 값에 연결된 제한적 수정안 작성
 
-`fake` 모드는 지정된 synthetic fixture 시나리오에서만 동작한다. `openai` 모드는 OpenAI Responses API와 Pydantic 구조화 출력을 직접 사용하고, `langchain` 모드는 `ChatPromptTemplate`과 `ChatOpenAI.with_structured_output(ClaimBatch)` Chain을 사용한다. 두 모드의 분석 결과는 동일한 결정적 영향 분석기와 수정 제안기를 통과한다. API 오류·타임아웃·스키마 오류는 영향 없음으로 숨기지 않고 실패/보류로 반환한다.
+`fake` 모드는 지정된 synthetic fixture 시나리오에서만 동작한다. `openai` 모드는 OpenAI Responses API와 Pydantic 구조화 출력을 직접 사용하고, `langchain` 모드는 `langchain-core` LCEL Chain으로 같은 구조화 출력 어댑터를 조립한다. 두 모드의 분석 결과는 동일한 결정적 영향 분석기와 수정 제안기를 통과한다. API 오류·타임아웃·스키마 오류는 영향 없음으로 숨기지 않고 실패/보류로 반환한다.
 
 ### 실행 방법
 
@@ -157,7 +157,7 @@ OPENAI_API_KEY=새로_발급한_키
 
 2026-09-15에 synthetic 원문과 메모를 입력으로 실제 OpenAI Responses API 구조화 출력 요청을 1회 실행했다. 결과는 `분석 완료`, `LLM 모드: openai`, `검토 주장: 5`, `보류: 0`, 그래프 종료 `complete_review`였다. 모델이 반환한 한국어 오프셋은 서버에서 원문 문자열을 재검색해 Python 오프셋으로 검증한 뒤 사용했다.
 
-이 실행은 실제 LLM 호출과 구조화 응답 파싱 성공을 확인한 것이지만, 입력 공시가 synthetic이므로 실제 DART 문서에 대한 의미 성능 검증은 아니다. LangChain 모드는 동일한 `ClaimBatch` 스키마를 사용하는 선택 경로이며 `langchain-openai` 설치와 API 키가 필요한 환경에서 실행한다. 실제 공시 파싱과 고정 평가 성능은 여전히 미검증이다.
+이 실행은 실제 LLM 호출과 구조화 응답 파싱 성공을 확인한 것이지만, 입력 공시가 synthetic이므로 실제 DART 문서에 대한 의미 성능 검증은 아니다. LangChain 모드는 동일한 `ClaimBatch` 스키마를 사용하는 선택 경로이며 `langchain-core`와 API 키가 필요한 환경에서 실행한다. 실제 공시 파싱과 고정 평가 성능은 여전히 미검증이다.
 
 ## 4. 어려웠던 점과 배운 점
 

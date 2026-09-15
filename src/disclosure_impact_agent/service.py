@@ -54,7 +54,13 @@ def analyze_memo(
     except Exception as exc:
         if isinstance(exc, TimeoutError) or type(exc).__name__ == "APITimeoutError":
             return _failure(llm_mode, model, "claim_extraction", "timeout", str(exc) or "claim extraction timed out", True)
-        code = "schema_or_provider_error" if llm_mode == "openai" else "fixture_mismatch"
+        if type(exc).__name__ == "APIConnectionError":
+            return _failure(
+                llm_mode, model, "claim_extraction", "provider_connection_error",
+                "could not connect to the model provider; check network/DNS, proxy, and OPENAI_BASE_URL",
+                True,
+            )
+        code = "schema_or_provider_error" if llm_mode in {"openai", "langchain"} else "fixture_mismatch"
         return _failure(llm_mode, model, "claim_extraction", code, str(exc))
     if not original.extraction_complete or not correction.extraction_complete:
         impacts = [

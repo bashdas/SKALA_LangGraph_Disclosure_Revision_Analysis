@@ -101,7 +101,7 @@ OpenAI 어댑터는 Responses API의 Pydantic 구조화 출력을 사용하고 `
 
 ## LangChain 모드
 
-LangChain 모드는 OpenAI SDK 직접 호출 모드와 같은 그래프와 결정적 검증기를 사용하면서, 주장 추출만 LangChain Chain으로 수행한다. Retriever는 관련 근거 후보를 찾고, Tool은 검증된 증거 조회와 정확한 `Decimal` 비율 계산을 제공한다. 검색 결과와 Tool 결과는 그래프 상태에 기록되며, 최종 근거 인정·영향 분류·수정 허용 여부는 결정적 코드가 판정한다.
+LangChain 모드는 OpenAI SDK 직접 호출 모드와 같은 그래프와 결정적 검증기를 사용하면서, 주장 추출을 LangChain LCEL Chain으로 조립한다. 현재 OpenAI SDK 버전과의 의존성 충돌을 피하기 위해 Chain은 `langchain-core`의 `ChatPromptTemplate`·`RunnableLambda`로 기존 Responses API 구조화 출력 어댑터를 감싼다. Retriever는 관련 근거 후보를 찾고, Tool은 검증된 증거 조회와 정확한 `Decimal` 비율 계산을 제공한다. 검색 결과와 Tool 결과는 그래프 상태에 기록되며, 최종 근거 인정·영향 분류·수정 허용 여부는 결정적 코드가 판정한다.
 
 ```bash
 export OPENAI_API_KEY="새로_발급한_키"
@@ -110,7 +110,7 @@ export LLM_MODE="langchain"
 PYTHONPATH=src .venv/bin/python -m disclosure_impact_agent.demo
 ```
 
-`langchain-openai`가 설치되어 있어야 하며, API 키가 없으면 외부 호출 없이 설정 보류로 종료한다.
+`langchain-core`가 설치되어 있어야 하며, API 키가 없으면 외부 호출 없이 설정 보류로 종료한다.
 
 ## 주요 코드 위치
 
